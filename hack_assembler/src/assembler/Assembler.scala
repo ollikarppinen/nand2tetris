@@ -6,30 +6,33 @@ import scala.io.Source
 object Assembler {
   def main(args: Array[String]): Unit = {
     if(args.isEmpty) {
-      println("Give path to file you want to compile.")
+      println("No file path argument")
     } else {
-      assemble(args(0))
+      val path = args(0)
+      val file = new java.io.File(path)
+      if(!file.exists || !file.isFile) {
+        println("Invalid path")
+      } else if(!path.endsWith(".asm")) {
+        println("Wrong file format")
+      } else {
+        assemble(file)
+      }
     }
   }
 
-  def assemble(path: String): Unit = {
-    val file = new java.io.File(path)
-    if(!file.exists) println("Invalid path.")
-    else if(!file.isFile) println("Can't read file.")
-    else if(!path.endsWith(".asm")) println("File is not in .asm format")
-    else {
-      val fileName = path.split('/').last.dropRight(4)
-      val newFile = new File(fileName + ".hack")
-      val pw = new PrintWriter(newFile)
-      Parser.addLabels(Source.fromFile(path).getLines())
-      for(line <- Source.fromFile(path).getLines()) {
-        val parsed = Parser.parseLine(line)
-        if(parsed.isDefined) {
-          pw.write(parsed.get + '\n')
-        }
-      }
-      pw.close()
-      println("Assembly completed!")
+  def assemble(file: File): Unit = {
+    val newFile = new File(file.getName.dropRight(4) + ".hack")
+
+    def getLines = Source.fromFile(file).getLines
+
+    Parser.addLabels(getLines)
+
+    val pw = new PrintWriter(newFile)
+    for(line <- getLines) {
+      val trimmedLine = Parser.trim(line)
+      if(Parser.isInstruction(trimmedLine)) pw.write(Parser.parseLine(trimmedLine))
     }
+    pw.close()
+    println("Assembly completed!")
   }
 }

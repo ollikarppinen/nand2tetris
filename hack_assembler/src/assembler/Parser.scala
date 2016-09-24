@@ -2,18 +2,16 @@ package assembler
 
 object Parser {
   def addLabels(lines: Iterator[String]) = {
-    var address = 0
-    for(line <- lines) {
-      val t = trim(line)
-      if(isLabel(t)) SymbolTable.addLabel(parseLabel(t), address)
-      else if(isInstruction(t)) address += 1
+    var pc = 0
+    for(line <- lines.map(trim)) {
+      if(isLabel(line)) SymbolTable.addLabel(parseLabel(line), pc)
+      else if(isInstruction(line)) pc += 1
     }
   }
   def parseLabel(x: String): String = x.substring(x.indexOf('(') + 1, x.indexOf(')'))
   def isLabel(x: String): Boolean = x.nonEmpty && (x.head == '(' && x.last == ')')
 
-  def parseLine(x: String): Option[String] =
-    if(isInstruction(x)) Some(parseInstruction(x).toBinary) else None
+  def parseLine(x: String): String = parseInstruction(x).toBinary + '\n'
 
   def isInstruction(x: String): Boolean = {
     x.replace(" ", "").take(1) match {
@@ -24,19 +22,18 @@ object Parser {
     }
   }
 
-  def parseInstruction(i: String): HackInstruction = {
-    val t = trim(i)
-    t.head match {
-      case '@' => parseA(t)
-      case _ => parseC(t)
-    }
+  def parseInstruction(x: String): HackInstruction = x.head match {
+    case '@' => parseA(x)
+    case _ => parseC(x)
   }
 
   def parseA(x: String) = {
     val value = x.tail
-    if(isNumeric(value)) AInstruction(value.toInt)
-    else if(SymbolTable.contains(value)) AInstruction(SymbolTable.getAddress(value))
-    else {
+    if(isNumeric(value)) {
+      AInstruction(value.toInt)
+    } else if(SymbolTable.contains(value)) {
+      AInstruction(SymbolTable.getAddress(value))
+    } else {
       SymbolTable.addVariable(value)
       AInstruction(SymbolTable.getAddress(value))
     }
@@ -45,6 +42,7 @@ object Parser {
   def parseC(x: String) = CInstruction(dest(x), comp(x), jump(x))
 
   def trim(str: String): String = str.split("//").head.replace(" ", "")
+
   def isNumeric(x: String): Boolean = x.forall(_.isDigit)
 
   trait HackInstruction {
